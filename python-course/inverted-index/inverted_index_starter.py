@@ -6,8 +6,8 @@ from typing import Dict, List
 
 
 class InvertedIndex:
-    def __init__(self, documents: Dict[int, str]):
-        self.documents = documents
+    def __init__(self):
+        self.documents: Dict[int, List[int]] = {}
 
     def __repr__(self):
         _repr = f"{self.__class__.__name__}(documents='{self.documents}')"
@@ -15,6 +15,13 @@ class InvertedIndex:
 
     def __eq__(self, rhs):
         pass
+
+    def invert(self, id, words):
+        for word in words:
+            if word not in self.documents:
+                self.documents[word] = [id]
+            else:
+                self.documents[word].append(id)
 
     def query(self, words: List[str]) -> List[int]:
         """Return the list of relevant documents for the given query"""
@@ -24,7 +31,6 @@ class InvertedIndex:
         result = list(result)
         return result
 
-
     def dump(self, filepath: str) -> None:
         with open(filepath, 'w') as f:
             json.dump(self.documents, f)
@@ -33,7 +39,7 @@ class InvertedIndex:
     def load(cls, filepath: str) -> InvertedIndex:
         with open(filepath) as f:
             documents = json.load(f)
-        return InvertedIndex(documents)
+        return cls(documents)
 
 
 def load_documents(filepath: str) -> Dict[int, str]:
@@ -48,21 +54,12 @@ def load_documents(filepath: str) -> Dict[int, str]:
     return data
 
 
-
 def build_inverted_index(documents: Dict[int, str]) -> InvertedIndex:
-    inverted_index = {}
-    for document in documents:
-        content_list = documents[document]
-        for _id in range(len(content_list)):
-            if content_list[_id] in inverted_index:
-                if document not in inverted_index[content_list[_id]]:
-                    inverted_index[content_list[_id]].append(document)
-            else:
-                inverted_index[content_list[_id]] = [document]
-    index = InvertedIndex(inverted_index)
+    index = InvertedIndex()
+
+    for id, words in documents.items():
+        index.invert(id, words)
     return index
-
-
 
 
 def main():
