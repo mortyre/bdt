@@ -29,21 +29,15 @@ class InvertedIndex:
     def query(self, words: List[str]) -> List[int]:
         """Return the list of relevant documents for the given query"""
         result: set = set()
+        sets: List[set] = []
 
         for word in words:
             if word in self.documents:
-                result = result.intersection(self.documents[word])
-                #result = result.union(self.documents[word])
+                sets.append(set(self.documents[word]))
+            else:
+                return list()
 
-        return list(result)
-#        try:
-#            first_word = self.documents[words[0]]
-#            second_word = self.documents[words[1]]
-#            result = set(first_word).intersection(second_word)
-#            result = list(result)
-#            return result
-#        except Exception:
-#            print("Some word is not found")
+        return list(set.intersection(*sets))
 
     def dump(self, filepath: str) -> None:
         """Dump documents from Python RunTime to file"""

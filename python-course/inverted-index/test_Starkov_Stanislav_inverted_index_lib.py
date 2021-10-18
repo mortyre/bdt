@@ -2,9 +2,9 @@ from task_Starkov_Stanislav_inverted_index_lib import *
 
 def test_can_load_from_file():
     loaded_file = load_documents("test_dataset")
-    expected_file = {12: ['anarchismi', 'cat', 'guns', 'test', ''],
-                     13: ['test', 'dog', 'doll', 'house', ''],
-                     14: ['dog', 'test', 'cat', 'doll', '']}
+    expected_file = {12: 'anarchismi cat, guns test',
+                     13: 'test dog doll house.',
+                     14: 'dog test cat doll!'}
     assert expected_file == loaded_file
 
 
