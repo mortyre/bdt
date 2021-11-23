@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, FileType, ArgumentTypeError
+from io import TextIOWrapper
 import sys
 from typing import List
 import re
@@ -10,7 +11,30 @@ from typing import Dict, List
 
 DEFAULT_INVERTED_INDEX_PATH = "./dataset"
 DEFAULT_INVERTED_INDEX_STORE = "dump"
-DEFAULT_INVERTED_INDEX_STRATEGY = "json"
+DEFAULT_INVERTED_INDEX_STRATEGY = "struct"
+
+class EncodedFileType(FileType):
+    def __call__(self, string):
+        # the special argument "-" means sys.std{in,out}
+        if string == '-':
+            if 'r' in self._mode:
+                stdin = TextIOWrapper(sys.stdin.buffer, encoding=self._encoding)
+                return stdin
+            elif 'w' in self._mode:
+                stdout = TextIOWrapper(sys.stdout.buffer, encoding=self._encoding)
+                return stdout
+            else:
+                msg = _('argument "-" with mode %r') % self._mode
+                raise ValueError(msg)
+
+        # all other arguments are used as file names
+        try:
+            return open(string, self._mode, self._bufsize, self._encoding,
+                        self._errors)
+        except OSError as e:
+            args = {'filename': string, 'error': e}
+            message = _("can't open '%(filename)s': %(error)s")
+            raise ArgumentTypeError(message % args)
 
 
 class InvertedIndex:
@@ -52,8 +76,9 @@ class InvertedIndex:
         if strategy == "json":
             with open(filepath, 'w') as file:
                 json.dump(self.documents, file)
-        elif strategy == "pickle":
-            print("Sorry, this function under developing")
+        elif strategy == "struct":
+            with open(filepath, 'w') as file:
+                json.dump(self.documents, file)
         else:
             print("Sorry. Strategy repl(self.strategy) not supported")
 
@@ -94,11 +119,19 @@ def callback_build(arguments):
 
 
 def callback_query(arguments):
-    inverted_index = InvertedIndex.load(arguments.input)
-    for words in arguments.query:
+    """comments"""
+    inverted_index = InvertedIndex.load(arguments.index)
+    query = []
+    if not arguments.query:
+        for line in arguments.query_file:
+            line = line.strip().split()
+            query.append(line)
+    else:
+        query = arguments.query
+
+    for words in query:
         document_ids = inverted_index.query(words)
         print(",".join(str(x) for x in document_ids))
-    #return document_ids
 
 
 def setup_parser(parser):
@@ -120,7 +153,7 @@ def setup_parser(parser):
         help="path to store dataset, default path is %(default)s",
         )
     build_parser.add_argument(
-        "-s", "--strategy", choices=['json', 'pickle'],
+        "-s", "--strategy", choices=['json', 'struct'],
         default=DEFAULT_INVERTED_INDEX_STRATEGY,
         help="set strategy to save inverted index, default is %(default)s",
         )
@@ -131,12 +164,25 @@ def setup_parser(parser):
         formatter_class=ArgumentDefaultsHelpFormatter,
     )
     query_parser.add_argument(
-        "-i", "--json-index", default=DEFAULT_INVERTED_INDEX_STORE,
+        "-i", "--index", default=DEFAULT_INVERTED_INDEX_STORE,
         help="path to binary dump",
         )
-    query_parser.add_argument(
-        "-q", "--query", nargs="+", required=True, metavar="WORD", action='append',
+    query_parser_group = query_parser.add_mutually_exclusive_group(required=True)
+    query_parser_group.add_argument(
+        "-q", "--query", nargs="+", metavar="WORD", action='append',
         help="qury to inverted index",
+        )
+    query_parser_group.add_argument(
+        "--query-file-utf8",
+        dest="query_file", type=EncodedFileType("r", encoding="utf-8"),
+        default=TextIOWrapper(sys.stdin.buffer, encoding="utf-8"),
+        help="query to inverted index from file UTF-8",
+        )
+    query_parser_group.add_argument(
+        "--query-file-cp1251",
+        dest="query_file", type=EncodedFileType("r", encoding="cp1251"),
+        default=TextIOWrapper(sys.stdin.buffer, encoding="cp1251"),
+        help="query to inverted index from file CP-1251",
         )
     query_parser.set_defaults(callback=callback_query)
 

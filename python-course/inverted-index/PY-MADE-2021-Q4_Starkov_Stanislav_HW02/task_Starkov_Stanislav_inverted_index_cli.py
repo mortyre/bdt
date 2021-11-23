@@ -94,7 +94,7 @@ def callback_build(arguments):
 
 
 def callback_query(arguments):
-    inverted_index = InvertedIndex.load(arguments.input)
+    inverted_index = InvertedIndex.load(arguments.json_index)
     for words in arguments.query:
         document_ids = inverted_index.query(words)
         print(",".join(str(x) for x in document_ids))
